@@ -13,15 +13,20 @@ knitr::opts_chunk$set(echo = TRUE)
 data = read.csv("~/Desktop/stat153/timeseries_project/Alcohol_Sales.csv")
 plot(data$S4248SM144NCEN, type='l')
 ```
+
 ```{r}
 log_data = log(data$S4248SM144NCEN)
 plot(log_data, type='l')
 ```
+
 ```{r}
-acf2(log_data)
+diff_data = diff(diff(log_data, 12, 1), 3, 1)
+auto.arima(diff_data, allowmean=FALSE)
+sarima(diff_data, 5, 0, 1)
 ```
+
 ```{r}
-auto.arima(log_data, allowdrift= F)
-sarima(log_data, 2, 1, 2)
+auto.arima(log_data, method="ML", allowdrift=FALSE)
+sarima(log_data, 0, 1, 2)
 ```
 
