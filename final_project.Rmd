@@ -10,23 +10,49 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ```{r}
-data = read.csv("~/Desktop/stat153/timeseries_project/Alcohol_Sales.csv")
-plot(data$S4248SM144NCEN, type='l')
+# data = read.csv("~/Desktop/stat153/timeseries_project/Alcohol_Sales.csv")
+data = read.csv("C:/Users/selen/OneDrive/Documents/GitHub/timeseries_project/Alcohol_Sales.csv")
+ts.plot(data, xlab = 'Months Since Jan 1992', ylab = 'US Alcohol Sales (Millions of Dollars)', main = 'Time Series of US Alcohol Sales')
 ```
 
 ```{r}
 log_data = log(data$S4248SM144NCEN)
-plot(log_data, type='l')
+ts.plot(log_data, xlab = 'Months Since Jan 1992', ylab = 'Log Alcohol Sales (Millions of Dollars)', main = 'Time Series of Log US Alcohol Sales')
 ```
 
 ```{r}
+# differenced data 
 diff_data = diff(diff(log_data, 12, 1), 3, 1)
-auto.arima(diff_data, allowmean=FALSE)
-sarima(diff_data, 5, 0, 1)
+plot(diff_data, type = 'l', xlab = 'Months Since Jan 1992', ylab = 'Difference', main = 'Lag 3 Difference of Lag 12 Differenced Log Data')
+acf2(diff_data)
 ```
 
 ```{r}
-auto.arima(log_data, method="ML", allowdrift=FALSE)
-sarima(log_data, 0, 1, 2)
+# arma 1: ARMA(6)
+auto.arima(diff_data)
+sarima(diff_data, 6, 0, 0)
+
+corrs = ARMAacf(ar = c(-0.0502, 0.0994, -0.3477, -0.0539, 0.2128, -0.2454), lag.max = 28)
+par.corrs = ARMAacf(ar = c(-0.0502, 0.0994, -0.3477, -0.0539, 0.2128, -0.2454), lag.max = 28, pacf = TRUE)
+
+plot(x = 1:28, y = corrs[2:29], type = "h", xlab = "Lag k", ylab = "Autocorrelation")
+abline(h = 0)
+plot(x = 1:28, y = par.corrs, type = "h", xlab = "Lag k", ylab = "Partial Autocorrelation")
+abline(h = 0)
 ```
+```{r}
+# arma 2: arma(5, 1)
+sarima(diff_data, 5, 0, 1)
+
+corrs = ARMAacf(ar = c(-0.7059, 0.0481, -0.2426, -0.2349, 0.2032), ma = 0.6887, lag.max = 28)
+par.corrs = ARMAacf(ar = c(-0.7059, 0.0481, -0.2426, -0.2349, 0.2032), ma = 0.6887, lag.max = 28, pacf = TRUE)
+
+plot(x = 1:28, y = corrs[2:29], type = "h", xlab = "Lag k", ylab = "Autocorrelation")
+abline(h = 0)
+plot(x = 1:28, y = par.corrs, type = "h", xlab = "Lag k", ylab = "Partial Autocorrelation")
+abline(h = 0)
+```
+
+
+
 
