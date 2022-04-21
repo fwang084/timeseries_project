@@ -70,7 +70,11 @@ if(i<(frequency / 2)){sinX[,i] = sin(2*pi*t*i/frequency)}
 }
 
 tt = t^2
-lin.mod = lm(log_data ~ 1 + t + cosX + sinX)
+ttt = t^3
+tttt = t^4
+#lin.mod = lm(log_data ~ 1 + t + cosX + sinX)
+
+lin.mod = lm(log_data ~ t + tt + ttt + tttt + cosX + sinX +  factor( t %% 12 ) )
 
 plot.ts(t, log_data, type = 'l', main="Log of Alcohol Sales with Fitted Parametric Model", xlab = 'Months Since Jan 1992',ylab="Log(Alcohol Sales)")
 lines(t, lin.mod$fitted, col = '2')
@@ -81,7 +85,9 @@ plot.ts(lin.mod$residual, ylab = "residual", main="Residuals of a seasonal param
 ```
 ```{r}
 auto.arima(lin.mod$residuals)
-sarima(lin.mod$residuals, 5, 0, 1)
+acf(lin.mod$residuals)
+
+pacf(lin.mod$residuals)
 ```
 
-
+ 
