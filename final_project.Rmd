@@ -13,9 +13,9 @@ library(forecast)
 ```
 
 ```{r}
-data = read.csv("~/Downloads/stat153/timeseries_project/Alcohol_Sales.csv")
+#data = read.csv("~/Downloads/stat153/timeseries_project/Alcohol_Sales.csv")
 #data = read.csv("C:/Users/willi/Documents/GitHub/timeseries_project/Alcohol_Sales.csv")
-#data = read.csv("C:/Users/selen/OneDrive/Documents/GitHub/timeseries_project/Alcohol_Sales.csv")
+data = read.csv("C:/Users/selen/OneDrive/Documents/GitHub/timeseries_project/Alcohol_Sales.csv")
 ts.plot(data, xlab = 'Months Since Jan 1992', ylab = 'US Alcohol Sales (Millions of Dollars)', main = 'Time Series of US Alcohol Sales')
 ```
 
@@ -65,8 +65,6 @@ pgram
 
 t = 1:n
 
-
-
 frequency = 12
 cosX = matrix(NA,ncol=frequency / 2,nrow=length(log_data))
 sinX = matrix(NA,ncol=frequency / 2 - 1,nrow=length(log_data))
@@ -90,31 +88,83 @@ lines(t, lin.mod$fitted, col = '2')
 plot.ts(lin.mod$residual, ylab = "residual", main="Residuals of a seasonal parametric fit for the Log of Alochol Sales")
 ```
 ```{r}
-auto.arima(lin.mod$residuals)
-acf(lin.mod$residuals)
-
-pacf(lin.mod$residuals)
-```
-```{r}
+# didn't want to delete the more complicated one but we can probably use this without indicators
+n = length(log_data)
 t = 1:n
-mos = factor(t %% 12)
-v2 = cos(2*pi*1*t/12)
-v3 = sin(2*pi*1*t/12)
-v4 = cos(2*pi*2*t/12)
-v5 = sin(2*pi*2*t/12)
-v6 = cos(2*pi*3*t/12)
-v7 = sin(2*pi*3*t/12)
-v8 = cos(2*pi*4*t/12)
-v9 = sin(2*pi*4*t/12)
-v10 = cos(2*pi*5*t/12)
-v11 = sin(2*pi*5*t/12)
-v12 = cos(2*pi*6*t/12)
-lin.mod2 = lm(log_data ~ poly(t, 4) + v2 + v3 + v4 + v5 + v6 + v7 + v8 + v9 + v10 + v11 + v12)
+tt = t^2
+ttt = t^3
+tttt = t^4
 
-plot.ts(t, log_data, type = 'l', main="Log of Alcohol Sales with Fitted Parametric Model", xlab = 'Months Since Jan 1992',ylab="Log(Alcohol Sales)")
+frequency = 12
+cosX = matrix(NA,ncol=frequency / 2,nrow=length(log_data))
+sinX = matrix(NA,ncol=frequency / 2 - 1,nrow=length(log_data))
+for(i in 1:(frequency/2)){
+cosX[,i] = cos(2*pi*t*i/frequency)
+if(i<(frequency / 2)){sinX[,i] = sin(2*pi*t*i/frequency)}
+}
+
+cosX.1 = cosX[,1]
+cosX.2 = cosX[,2]
+cosX.3 = cosX[,3]
+cosX.4 = cosX[,4]
+cosX.5 = cosX[,5]
+cosX.6 = cosX[,6]
+
+sinX.1 = sinX[,1]
+sinX.2 = sinX[,2]
+sinX.3 = sinX[,3]
+sinX.4 = sinX[,4]
+sinX.5 = sinX[,5]
+
+lin.mod2 = lm(log_data ~ 1 + t + tt + ttt + tttt + cosX.1 + cosX.2 + cosX.3 + cosX.4 + cosX.5 + cosX.6 + sinX.1 + sinX.2 + sinX.3 + sinX.4 + sinX.5)
+
+plot.ts(t, log_data, type = 'l', main="Log of Alcohol Sales with Fitted Parametric Model", xlab = 'Months Since Jan 1992',ylab="Log Alcohol Sales")
 lines(t, lin.mod2$fitted, col = '2')
 
-plot.ts(lin.mod2$residual, ylab = "residual", main="Residuals of a seasonal parametric fit for the Log of Alochol Sales")
+plot.ts(lin.mod2$residual, ylab = "Residual", main="Residuals of a seasonal parametric fit for the Log of Alochol Sales")
+```
+
+
+```{r}
+# finding arima for residuals
+resid = lin.mod2$residuals
+auto.arima(resid, method = 'ML')
+auto.arima(resid, method = 'CSS-ML')
+auto.arima(resid, method = 'CSS')
+auto.arima(resid, ic = 'aic')
+auto.arima(resid, ic = 'aicc')
+auto.arima(resid, ic = 'bic')
+sarima(resid, 1, 0, 5, no.constant = TRUE)
+sarima(resid, 2, 0, 3, no.constant = TRUE)
+sarima(resid, 3, 0, 2, no.constant = TRUE)
+
+```
+```{r}
+acf2(resid)
+
+corrs1 = ARMAacf(ar = 0.4326, ma = c(-0.6894, 0.2451, 0.4063, -0.3522, 0.3028), lag.max = 28)
+par.corrs1 = ARMAacf(ar = 0.4326, ma = c(-0.6894, 0.2451, 0.4063, -0.3522, 0.3028), lag.max = 28, pacf = TRUE)
+
+plot(x = 1:28, y = corrs1[2:29], type = "h", xlab = "Lag k", ylab = "Autocorrelation 1")
+abline(h = 0)
+plot(x = 1:28, y = par.corrs1, type = "h", xlab = "Lag k", ylab = "Partial Autocorrelation 1")
+abline(h = 0)
+
+corrs2 = ARMAacf(ar = c(-1.1573, -0.9999), ma = c(1.1563, 1.0088, 0.0078), lag.max = 28)
+par.corrs2 = ARMAacf(ar = c(-1.1573, -0.9999), ma = c(1.1563, 1.0088, 0.0078), lag.max = 28, pacf = TRUE)
+
+plot(x = 1:28, y = corrs2[2:29], type = "h", xlab = "Lag k", ylab = "Autocorrelation 2")
+abline(h = 0)
+plot(x = 1:28, y = par.corrs2, type = "h", xlab = "Lag k", ylab = "Partial Autocorrelation 2")
+abline(h = 0)
+
+corrs3 = ARMAacf(ar = c(-0.1970, 0.1581, 0.5680), ma = c(-0.0415, -0.0743), lag.max = 28)
+par.corrs3 = ARMAacf(ar = c(-0.1970, 0.1581, 0.5680), ma = c(-0.0415, -0.0743), lag.max = 28, pacf = TRUE)
+
+plot(x = 1:28, y = corrs3[2:29], type = "h", xlab = "Lag k", ylab = "Autocorrelation 3")
+abline(h = 0)
+plot(x = 1:28, y = par.corrs3, type = "h", xlab = "Lag k", ylab = "Partial Autocorrelation 3")
+abline(h = 0)
 ```
 
 ```{r}
@@ -149,58 +199,96 @@ for (i in 2007:2018) {
   
   mos = factor(t %% 12)
   
-  # fit models
-  # m1 = sarima(v_t[1:n], 2, 1, 2, 0, 1, 1, 12, details = FALSE)
-  # m2 = lm(v_t[1:n] ~ -1 + t + tt + ttt + mos)
-  
+  # fit SARIMA models
+  m1 = sarima(diff12_data[1:n], 2, 0, 3, details = FALSE, no.constant=TRUE)
+  m2 = sarima(diff12_data[1:n], 3, 0, 2, details = FALSE, no.constant=TRUE)
   m3 = sarima(diff12_data[1:n], 6, 0, 0, 0, 1, 0, 3, details = FALSE, no.constant=TRUE)
   m4 = sarima(diff12_data[1:n], 5, 0, 1, 0, 1, 0, 3, details = FALSE, no.constant=TRUE)
   
   
   # get SARIMA model parameters
+  coeff1 = m3$ttable[1:5]
+  coeff2 = m4$ttable[1:5]
   coeff3 = m3$ttable[1:6]
   coeff4 = m4$ttable[1:6]
   
   # forecast for SARIMA models
-  #f1 = 
-  #f2 = 
+  f1 = sarima.for(diff12_data[1:n], n.ahead = m, 2, 0, 3, fixed = coeff1, plot = FALSE, no.constant=TRUE)
+  f2 = sarima.for(diff12_data[1:n], n.ahead = m, 3, 0, 2, fixed = coeff2, plot = FALSE, no.constant=TRUE)
   f3 = sarima.for(diff12_data[1:n], n.ahead = m, 6, 0, 0, 0, 1, 0, 3, fixed = coeff3, plot = FALSE, no.constant=TRUE)
   f4 = sarima.for(diff12_data[1:n], n.ahead = m, 5, 0, 1, 0, 1, 0, 3, fixed = coeff4, plot = FALSE, no.constant=TRUE)
   
+  # get parametric portion predictions
+  freq = 12
+  cosX2 = matrix(NA,ncol=freq / 2,nrow=12)
+  sinX2 = matrix(NA,ncol=freq / 2 - 1,nrow=12)
+  for(i in 1:(freq/2)){
+  cosX2[,i] = cos(2*pi*t2*i/freq)
+  if(i<(freq / 2)){sinX2[,i] = sin(2*pi*t2*i/freq)}
+  }
+
+  new = data.frame(t = t2, tt = t2^2, ttt= t2^3, tttt = t2^4, cosX.1 = cosX2[,1], cosX.2 = cosX2[,2], cosX.3 = cosX2[,3], cosX.4 = cosX2[,4], cosX.5 = cosX2[,5], cosX.6 = cosX2[,6], sinX.1 = sinX2[,1], sinX.2 = sinX2[,2], sinX.3 = sinX2[,3], sinX.4 = sinX2[,4], sinX.5 = sinX2[,5])
+
+  par = predict.lm(lin.mod2, new)
+  
   # get predictions for years, undoing log transformation
-  #pred1 = 
-  #pred2 = 
+  pred1 = exp(f1$pred + par)
+  pred2 = exp(f2$pred + par)
   pred3 = exp(f3$pred + log_data[(n-11):n])
   pred4 = exp(f4$pred + log_data[(n-11):n])
-  
-  # get parameters for parametric model
-  #b = unname(m1$coefficients)
-  
-  # get parametric predictions, undoing log transformation (note: reordered coefficients to ensure that the indicator for dec is at the end)
-  #pred4 = exp(c(b[5:15], b[4])[1:m] + b[1]*t2 + b[2]*t2^2 + b[3]*t2^3)
   
   # actual values
   actual = data$S4248SM144NCEN[(n+1):(n+m)] 
   
   # compute sses
-  #sse1 = sum((actual - pred1)^2)
-  #sse2 = sum((actual - pred2)^2)
+  sse1 = sum((actual - pred1)^2)
+  sse2 = sum((actual - pred2)^2)
   sse3 = sum((actual - pred3)^2)
   sse4 = sum((actual - pred4)^2)
   
   # append forecasts/errors to appropriate list
-  #forecasts$m1 = c(forecasts$m1, pred1)
-  #forecasts$m2 = c(forecasts$m2, pred2)
+  forecasts$m1 = c(forecasts$m1, pred1)
+  forecasts$m2 = c(forecasts$m2, pred2)
   forecasts$m3 = c(forecasts$m3, pred3)
   forecasts$m4 = c(forecasts$m4, pred4)
-  #errors$m1 = c(errors$m1, sse1)
-  #errors$m2 = c(errors$m2, sse2)
+  errors$m1 = c(errors$m1, sse1)
+  errors$m2 = c(errors$m2, sse2)
   errors$m3 = c(errors$m3, sse3)
   errors$m4 = c(errors$m4, sse4)
 }
 ```
 
 ```{r}
-plot(forecasts$m3, type='l')
+# cross validation table
+mse = c(mean(errors$m1), mean(errors$m2), mean(errors$m3), mean(errors$m4))
+
+comp_tbl = data.frame(Model = c(1, 2, 3, 4), MSE = mse)
+comp_tbl
+
+```
+
+```{r}
+# extra stuff from testing things
+
+plot(data$S4248SM144NCEN[181:324], type = 'l')
+lines(forecasts$m4, type = 'l', col = 5)
+#lines(forecasts$m2, type = 'l', col = '2')
+#lines(forecasts$m3, type = 'l', col = '3')
+#lines(forecasts$m4, type = 'l', col = '4')
+
+lin.mod2$coefficients
+t2 = 326:337
+
+frequency = 12
+cosX2 = matrix(NA,ncol=frequency / 2,nrow=12)
+sinX2 = matrix(NA,ncol=frequency / 2 - 1,nrow=12)
+for(i in 1:(frequency/2)){
+cosX2[,i] = cos(2*pi*t2*i/frequency)
+if(i<(frequency / 2)){sinX2[,i] = sin(2*pi*t2*i/frequency)}
+}
+
+new = data.frame(t = t2, tt = t2^2, ttt= t2^3, tttt = t2^4, cosX.1 = cosX2[,1], cosX.2 = cosX2[,2], cosX.3 = cosX2[,3], cosX.4 = cosX2[,4], cosX.5 = cosX2[,5], cosX.6 = cosX2[,6], sinX.1 = sinX2[,1], sinX.2 = sinX2[,2], sinX.3 = sinX2[,3], sinX.4 = sinX2[,4], sinX.5 = sinX2[,5])
+
+plot(exp(predict.lm(lin.mod2, new)), type = 'l')
 ```
  
