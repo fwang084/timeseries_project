@@ -13,9 +13,9 @@ library(forecast)
 ```
 
 ```{r}
-# data = read.csv("~/Desktop/stat153/timeseries_project/Alcohol_Sales.csv")
-# data = read.csv("C:/Users/willi/Documents/GitHub/timeseries_project/Alcohol_Sales.csv")
-data = read.csv("C:/Users/selen/OneDrive/Documents/GitHub/timeseries_project/Alcohol_Sales.csv")
+data = read.csv("~/Downloads/stat153/timeseries_project/Alcohol_Sales.csv")
+#data = read.csv("C:/Users/willi/Documents/GitHub/timeseries_project/Alcohol_Sales.csv")
+#data = read.csv("C:/Users/selen/OneDrive/Documents/GitHub/timeseries_project/Alcohol_Sales.csv")
 ts.plot(data, xlab = 'Months Since Jan 1992', ylab = 'US Alcohol Sales (Millions of Dollars)', main = 'Time Series of US Alcohol Sales')
 ```
 
@@ -119,7 +119,7 @@ plot.ts(lin.mod2$residual, ylab = "residual", main="Residuals of a seasonal para
 
 ```{r}
 # cross validation
-
+diff12_data = diff(log_data, 12, 1)
 forecasts = list(
   m1 = c(),
   m2 = c(),
@@ -134,20 +134,15 @@ errors = list(
   m4 = c()
 )
 
-for (i in 1985:1995) {
+for (i in 2007:2018) {
   m = 12
-  n = (i-1970)*12
-  
-  # handle special case of 1995 which has only 8 data points
-  if (i == 1995){
-    m = 8
-    n = n - 4
-  }
+  n = (i-1992)*12
   
   # training time range
   t = 1:n
   tt = t^2
   ttt = t^3
+  tttt = t^4
   
   # testing time range
   t2 = (n+1):(n+m)
@@ -155,51 +150,57 @@ for (i in 1985:1995) {
   mos = factor(t %% 12)
   
   # fit models
-  m1 = sarima(v_t[1:n], 2, 1, 3, 0, 1, 1, 12, details = FALSE)
-  m2 = sarima(v_t[1:n], 1, 1, 1, 0, 1, 1, 12, details = FALSE)
-  m3 = sarima(v_t[1:n], 2, 1, 2, 0, 1, 1, 12, details = FALSE)
-  m4 = lm(v_t[1:n] ~ -1 + t + tt + ttt + mos)
+  # m1 = sarima(v_t[1:n], 2, 1, 2, 0, 1, 1, 12, details = FALSE)
+  # m2 = lm(v_t[1:n] ~ -1 + t + tt + ttt + mos)
+  
+  m3 = sarima(diff12_data[1:n], 6, 0, 0, 0, 1, 0, 3, details = FALSE, no.constant=TRUE)
+  m4 = sarima(diff12_data[1:n], 5, 0, 1, 0, 1, 0, 3, details = FALSE, no.constant=TRUE)
+  
   
   # get SARIMA model parameters
-  coeff1 = m1$ttable[1:6]
-  coeff2 = m2$ttable[1:3]
-  coeff3 = m3$ttable[1:5]
+  coeff3 = m3$ttable[1:6]
+  coeff4 = m4$ttable[1:6]
   
   # forecast for SARIMA models
-  f1 = sarima.for(v_t[1:n], n.ahead = m, 2, 1, 3, 0, 1, 1, 12, fixed = coeff1, plot = FALSE)
-  f2 = sarima.for(v_t[1:n], n.ahead = m, 1, 1, 1, 0, 1, 1, 12, fixed = coeff2, plot = FALSE)
-  f3 = sarima.for(v_t[1:n], n.ahead = m, 2, 1, 2, 0, 1, 1, 12, fixed = coeff3, plot = FALSE)
+  #f1 = 
+  #f2 = 
+  f3 = sarima.for(diff12_data[1:n], n.ahead = m, 6, 0, 0, 0, 1, 0, 3, fixed = coeff3, plot = FALSE, no.constant=TRUE)
+  f4 = sarima.for(diff12_data[1:n], n.ahead = m, 5, 0, 1, 0, 1, 0, 3, fixed = coeff4, plot = FALSE, no.constant=TRUE)
   
   # get predictions for years, undoing log transformation
-  pred1 = exp(f1$pred)
-  pred2 = exp(f2$pred)
-  pred3 = exp(f3$pred)
+  #pred1 = 
+  #pred2 = 
+  pred3 = exp(f3$pred + log_data[(n-11):n])
+  pred4 = exp(f4$pred + log_data[(n-11):n])
   
   # get parameters for parametric model
-  b = unname(m4$coefficients)
+  #b = unname(m1$coefficients)
   
   # get parametric predictions, undoing log transformation (note: reordered coefficients to ensure that the indicator for dec is at the end)
-  pred4 = exp(c(b[5:15], b[4])[1:m] + b[1]*t2 + b[2]*t2^2 + b[3]*t2^3)
+  #pred4 = exp(c(b[5:15], b[4])[1:m] + b[1]*t2 + b[2]*t2^2 + b[3]*t2^3)
   
   # actual values
-  actual = gas_data[(n+1):(n+m)] 
+  actual = data$S4248SM144NCEN[(n+1):(n+m)] 
   
   # compute sses
-  sse1 = sum((actual - pred1)^2)
-  sse2 = sum((actual - pred2)^2)
+  #sse1 = sum((actual - pred1)^2)
+  #sse2 = sum((actual - pred2)^2)
   sse3 = sum((actual - pred3)^2)
   sse4 = sum((actual - pred4)^2)
   
   # append forecasts/errors to appropriate list
-  forecasts$m1 = c(forecasts$m1, pred1)
-  forecasts$m2 = c(forecasts$m2, pred2)
+  #forecasts$m1 = c(forecasts$m1, pred1)
+  #forecasts$m2 = c(forecasts$m2, pred2)
   forecasts$m3 = c(forecasts$m3, pred3)
   forecasts$m4 = c(forecasts$m4, pred4)
-  errors$m1 = c(errors$m1, sse1)
-  errors$m2 = c(errors$m2, sse2)
+  #errors$m1 = c(errors$m1, sse1)
+  #errors$m2 = c(errors$m2, sse2)
   errors$m3 = c(errors$m3, sse3)
   errors$m4 = c(errors$m4, sse4)
 }
 ```
 
+```{r}
+plot(forecasts$m3, type='l')
+```
  
