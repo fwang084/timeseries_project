@@ -11,7 +11,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ```{r}
 # data = read.csv("~/Desktop/stat153/timeseries_project/Alcohol_Sales.csv")
-data = read.csv("C:/Users/selen/OneDrive/Documents/GitHub/timeseries_project/Alcohol_Sales.csv")
+data = read.csv("C:/Users/willi/Documents/GitHub/timeseries_project/Alcohol_Sales.csv")
 ts.plot(data, xlab = 'Months Since Jan 1992', ylab = 'US Alcohol Sales (Millions of Dollars)', main = 'Time Series of US Alcohol Sales')
 ```
 
@@ -53,6 +53,35 @@ plot(x = 1:28, y = par.corrs, type = "h", xlab = "Lag k", ylab = "Partial Autoco
 abline(h = 0)
 ```
 
+```{r}
+length(log_data)
+pgram(log_data)
 
+t = 1:length(data$S4248SM144NCEN)
+
+
+
+frequency = 12
+cosX = matrix(NA,ncol=frequency / 2,nrow=length(log_data))
+sinX = matrix(NA,ncol=frequency / 2 - 1,nrow=length(log_data))
+for(i in 1:(frequency/2)){
+cosX[,i] = cos(2*pi*t*i/frequency)
+if(i<(frequency / 2)){sinX[,i] = sin(2*pi*t*i/frequency)}
+}
+
+tt = t^2
+lin.mod = lm(log_data ~ 1 + t + cosX + sinX)
+
+plot.ts(t, log_data, type = 'l', main="Log of Alcohol Sales with Fitted Parametric Model", xlab = 'Months Since Jan 1992',ylab="Log(Alcohol Sales)")
+lines(t, lin.mod$fitted, col = '2')
+```
+
+```{r}
+plot.ts(lin.mod$residual, ylab = "residual", main="Residuals of a seasonal parametric fit for the Log of Alochol Sales")
+```
+```{r}
+auto.arima(lin.mod$residuals)
+sarima(lin.mod$residuals, 5, 0, 1)
+```
 
 
