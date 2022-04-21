@@ -268,6 +268,18 @@ comp_tbl
 ```
 
 ```{r}
+n = length(data$S4248SM144NCEN)
+final = sarima.for(diff12_data, n.ahead = 10, 6, 0, 0, 0, 1, 0, 3, no.constant=TRUE)
+final_pred = exp(final$pred + log_data[(n-9):n])
+x = 1:(n+10)
+
+pred.df = data.frame(pts = c(data$S4248SM144NCEN, final_pred), t = x, type = c(rep('data', n), rep('forecast', 10)))
+ggplot(pred.df, aes(x = t, y = pts, color = type)) + geom_line() + scale_color_manual(values=c("black", "red"))
+
+
+```
+
+```{r}
 # extra stuff from testing things
 
 plot(data$S4248SM144NCEN[181:324], type = 'l')
