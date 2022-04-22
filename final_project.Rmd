@@ -13,88 +13,33 @@ library(forecast)
 ```
 
 ```{r}
-data = read.csv("~/Downloads/stat153/timeseries_project/Alcohol_Sales.csv")
+# read in data and plot
+
+#data = read.csv("~/Downloads/stat153/timeseries_project/Alcohol_Sales.csv")
 #data = read.csv("C:/Users/willi/Documents/GitHub/timeseries_project/Alcohol_Sales.csv")
-#data = read.csv("C:/Users/selen/OneDrive/Documents/GitHub/timeseries_project/Alcohol_Sales.csv")
+data = read.csv("C:/Users/selen/OneDrive/Documents/GitHub/timeseries_project/Alcohol_Sales.csv")
 ts.plot(data, xlab = 'Months Since Jan 1992', ylab = 'US Alcohol Sales (Millions of Dollars)', main = 'Time Series of US Alcohol Sales')
 ```
 
 ```{r}
+# vst and plot 
+
 log_data = log(data$S4248SM144NCEN)
 ts.plot(log_data, xlab = 'Months Since Jan 1992', ylab = 'Log Alcohol Sales (Millions of Dollars)', main = 'Time Series of Log US Alcohol Sales')
 ```
-
-```{r}
-# differenced data 
-diff_data = diff(diff(log_data, 12, 1), 3, 1)
-plot(diff_data, type = 'l', xlab = 'Months Since Jan 1992', ylab = 'Difference', main = 'Lag 3 Difference of Lag 12 Differenced Log Data')
-acf2(diff_data)
-```
-
-```{r}
-# arma 1: ARMA(6)
-auto.arima(diff_data)
-sarima(diff_data, 6, 0, 0)
-
-corrs = ARMAacf(ar = c(-0.0502, 0.0994, -0.3477, -0.0539, 0.2128, -0.2454), lag.max = 28)
-par.corrs = ARMAacf(ar = c(-0.0502, 0.0994, -0.3477, -0.0539, 0.2128, -0.2454), lag.max = 28, pacf = TRUE)
-
-plot(x = 1:28, y = corrs[2:29], type = "h", xlab = "Lag k", ylab = "Autocorrelation")
-abline(h = 0)
-plot(x = 1:28, y = par.corrs, type = "h", xlab = "Lag k", ylab = "Partial Autocorrelation")
-abline(h = 0)
-```
-```{r}
-# arma 2: arma(5, 1)
-sarima(diff_data, 5, 0, 1)
-
-corrs = ARMAacf(ar = c(-0.7059, 0.0481, -0.2426, -0.2349, 0.2032), ma = 0.6887, lag.max = 28)
-par.corrs = ARMAacf(ar = c(-0.7059, 0.0481, -0.2426, -0.2349, 0.2032), ma = 0.6887, lag.max = 28, pacf = TRUE)
-
-plot(x = 1:28, y = corrs[2:29], type = "h", xlab = "Lag k", ylab = "Autocorrelation")
-abline(h = 0)
-plot(x = 1:28, y = par.corrs, type = "h", xlab = "Lag k", ylab = "Partial Autocorrelation")
-abline(h = 0)
-```
-
-```{r}
-n = length(data$S4248SM144NCEN)
-pgram = abs(fft((log_data)[2:n]))^2/n
-plot(pgram[1:n], type = "h")
-pgram 
-
-t = 1:n
-
-frequency = 12
-cosX = matrix(NA,ncol=frequency / 2,nrow=length(log_data))
-sinX = matrix(NA,ncol=frequency / 2 - 1,nrow=length(log_data))
-for(i in 1:(frequency/2)){
-cosX[,i] = cos(2*pi*t*i/frequency)
-if(i<(frequency / 2)){sinX[,i] = sin(2*pi*t*i/frequency)}
-}
-
-tt = t^2
-ttt = t^3
-tttt = t^4
-#lin.mod = lm(log_data ~ 1 + t + cosX + sinX)
-
-lin.mod = lm(log_data ~ t + tt + ttt + tttt + cosX + sinX +  factor( t %% 12 ) )
-
-plot.ts(t, log_data, type = 'l', main="Log of Alcohol Sales with Fitted Parametric Model", xlab = 'Months Since Jan 1992',ylab="Log(Alcohol Sales)")
-lines(t, lin.mod$fitted, col = '2')
-```
-
-```{r}
-plot.ts(lin.mod$residual, ylab = "residual", main="Residuals of a seasonal parametric fit for the Log of Alochol Sales")
-```
 ```{r}
 # didn't want to delete the more complicated one but we can probably use this without indicators
+
+# signal model 1: parametric 
+
+# create time vectprs
 n = length(log_data)
 t = 1:n
 tt = t^2
 ttt = t^3
 tttt = t^4
 
+# create cos/sin terms
 frequency = 12
 cosX = matrix(NA,ncol=frequency / 2,nrow=length(log_data))
 sinX = matrix(NA,ncol=frequency / 2 - 1,nrow=length(log_data))
@@ -116,57 +61,90 @@ sinX.3 = sinX[,3]
 sinX.4 = sinX[,4]
 sinX.5 = sinX[,5]
 
+# fit model
 lin.mod2 = lm(log_data ~ 1 + t + tt + ttt + tttt + cosX.1 + cosX.2 + cosX.3 + cosX.4 + cosX.5 + cosX.6 + sinX.1 + sinX.2 + sinX.3 + sinX.4 + sinX.5)
 
+# plot fitted model
 plot.ts(t, log_data, type = 'l', main="Log of Alcohol Sales with Fitted Parametric Model", xlab = 'Months Since Jan 1992',ylab="Log Alcohol Sales")
 lines(t, lin.mod2$fitted, col = '2')
 
-plot.ts(lin.mod2$residual, ylab = "Residual", main="Residuals of a seasonal parametric fit for the Log of Alochol Sales")
+# plot residuals
+resid = lin.mod2$residual
+plot.ts(resid, ylab = "Residual", main="Residuals of a seasonal parametric fit for the Log of Alochol Sales")
+
+# plot ACF/PACF
+acf2(resid)
 ```
 
-
 ```{r}
-# finding arima for residuals
-resid = lin.mod2$residuals
-auto.arima(resid, method = 'ML')
-auto.arima(resid, method = 'CSS-ML')
-auto.arima(resid, method = 'CSS')
-auto.arima(resid, ic = 'aic')
-auto.arima(resid, ic = 'aicc')
-auto.arima(resid, ic = 'bic')
-sarima(resid, 1, 0, 5, no.constant = TRUE)
+# arma 1: ARMA(2, 3)
+
+# fit model
 sarima(resid, 2, 0, 3, no.constant = TRUE)
+
+# plot theoretical ACF/PACF
+corrs1 = ARMAacf(ar = c(-1.1573, -0.9999), ma = c(1.1563, 1.0088, 0.0078), lag.max = 28)
+par.corrs1 = ARMAacf(ar = c(-1.1573, -0.9999), ma = c(1.1563, 1.0088, 0.0078), lag.max = 28, pacf = TRUE)
+
+plot(x = 1:28, y = corrs1[2:29], type = "h", xlab = "Lag k", ylab = "Autocorrelation ARMA(2, 3)")
+abline(h = 0)
+plot(x = 1:28, y = par.corrs1, type = "h", xlab = "Lag k", ylab = "Partial Autocorrelation ARMA(2, 3)")
+abline(h = 0)
+```
+```{r}
+# arma 2: ARMA(3, 2)
+
+# fit model
 sarima(resid, 3, 0, 2, no.constant = TRUE)
 
+# plot theorectical ACF/PACF
+corrs2 = ARMAacf(ar = c(-0.1970, 0.1581, 0.5680), ma = c(-0.0415, -0.0743), lag.max = 28)
+par.corrs2 = ARMAacf(ar = c(-0.1970, 0.1581, 0.5680), ma = c(-0.0415, -0.0743), lag.max = 28, pacf = TRUE)
+
+plot(x = 1:28, y = corrs2[2:29], type = "h", xlab = "Lag k", ylab = "Autocorrelation ARMA(3, 2)")
+abline(h = 0)
+plot(x = 1:28, y = par.corrs2, type = "h", xlab = "Lag k", ylab = "Partial Autocorrelation ARMA(3, 2)")
+abline(h = 0)
+```
+
+```{r}
+# signal model 2 
+# difference data for stationarity
+
+diff_data = diff(diff(log_data, 12, 1), 3, 1)
+plot(diff_data, type = 'l', xlab = 'Months Since Jan 1992', ylab = 'Difference', main = 'Lag 3 Difference of Lag 12 Differenced Log Data')
+```
+
+```{r}
+# arma 1: ARMA(6)
+
+# fit model
+sarima(diff_data, 6, 0, 0)
+
+# plot theoretical ACF/PACF
+corrs = ARMAacf(ar = c(-0.0502, 0.0994, -0.3477, -0.0539, 0.2128, -0.2454), lag.max = 28)
+par.corrs = ARMAacf(ar = c(-0.0502, 0.0994, -0.3477, -0.0539, 0.2128, -0.2454), lag.max = 28, pacf = TRUE)
+
+plot(x = 1:28, y = corrs[2:29], type = "h", xlab = "Lag k", ylab = "Autocorrelation")
+abline(h = 0)
+plot(x = 1:28, y = par.corrs, type = "h", xlab = "Lag k", ylab = "Partial Autocorrelation")
+abline(h = 0)
 ```
 ```{r}
-acf2(resid)
+# arma 2: arma(5, 1)
 
-corrs1 = ARMAacf(ar = 0.4326, ma = c(-0.6894, 0.2451, 0.4063, -0.3522, 0.3028), lag.max = 28)
-par.corrs1 = ARMAacf(ar = 0.4326, ma = c(-0.6894, 0.2451, 0.4063, -0.3522, 0.3028), lag.max = 28, pacf = TRUE)
+# fit model 
+sarima(diff_data, 5, 0, 1)
 
-plot(x = 1:28, y = corrs1[2:29], type = "h", xlab = "Lag k", ylab = "Autocorrelation 1")
+# plot ACF/PACF
+corrs = ARMAacf(ar = c(-0.7059, 0.0481, -0.2426, -0.2349, 0.2032), ma = 0.6887, lag.max = 28)
+par.corrs = ARMAacf(ar = c(-0.7059, 0.0481, -0.2426, -0.2349, 0.2032), ma = 0.6887, lag.max = 28, pacf = TRUE)
+
+plot(x = 1:28, y = corrs[2:29], type = "h", xlab = "Lag k", ylab = "Autocorrelation")
 abline(h = 0)
-plot(x = 1:28, y = par.corrs1, type = "h", xlab = "Lag k", ylab = "Partial Autocorrelation 1")
-abline(h = 0)
-
-corrs2 = ARMAacf(ar = c(-1.1573, -0.9999), ma = c(1.1563, 1.0088, 0.0078), lag.max = 28)
-par.corrs2 = ARMAacf(ar = c(-1.1573, -0.9999), ma = c(1.1563, 1.0088, 0.0078), lag.max = 28, pacf = TRUE)
-
-plot(x = 1:28, y = corrs2[2:29], type = "h", xlab = "Lag k", ylab = "Autocorrelation 2")
-abline(h = 0)
-plot(x = 1:28, y = par.corrs2, type = "h", xlab = "Lag k", ylab = "Partial Autocorrelation 2")
-abline(h = 0)
-
-corrs3 = ARMAacf(ar = c(-0.1970, 0.1581, 0.5680), ma = c(-0.0415, -0.0743), lag.max = 28)
-par.corrs3 = ARMAacf(ar = c(-0.1970, 0.1581, 0.5680), ma = c(-0.0415, -0.0743), lag.max = 28, pacf = TRUE)
-
-plot(x = 1:28, y = corrs3[2:29], type = "h", xlab = "Lag k", ylab = "Autocorrelation 3")
-abline(h = 0)
-plot(x = 1:28, y = par.corrs3, type = "h", xlab = "Lag k", ylab = "Partial Autocorrelation 3")
+plot(x = 1:28, y = par.corrs, type = "h", xlab = "Lag k", ylab = "Partial Autocorrelation")
 abline(h = 0)
 ```
-
 ```{r}
 # cross validation
 diff12_data = diff(log_data, 12, 1)
@@ -264,20 +242,111 @@ mse = c(mean(errors$m1), mean(errors$m2), mean(errors$m3), mean(errors$m4))
 
 comp_tbl = data.frame(Model = c(1, 2, 3, 4), MSE = mse)
 comp_tbl
+```
+
+```{r}
+# fit chosen model
+n = length(log_data)
+mod = sarima(diff_data, 6, 0, 0, no.constant = TRUE, details = FALSE)
+
+# table of estimated parameters and s.e.s
+params = data.frame(i = c(1, 2, 3, 4, 5, 6), phi_i = mod$ttable[1:6], se = mod$ttable[7:12])
+
+# make forecasts for next 10 points
+final = sarima.for(diff12_data, n.ahead = 10, 6, 0, 0, 0, 1, 0, 3, fixed = params$phi_i, no.constant = TRUE, plot = FALSE)
+log_pred = final$pred + log_data[(n-9):n]
+final_pred = exp(log_pred)
+
+# create df of all points and intervals
+x = 1:(n+10)
+pred.df = data.frame(pts = c(data$S4248SM144NCEN, final_pred), t = x, type = c(rep('data', n), rep('forecast', 10)))
+pred.df = pred.df %>% 
+  mutate(CI_low = exp(c(log_data, log_pred) - 1.96 * c(rep(0, n), final$se))) %>%
+  mutate(CI_high = exp(c(log_data, log_pred) + 1.96 * c(rep(0, n), final$se)))
+
+# plot ts with forecasts in red
+ggplot(pred.df) + 
+  geom_line(aes(x = t, y = pts, color = type)) + 
+  scale_color_manual(values=c("black", "red")) +
+  labs(title = 'Time Series of US Alcohol Sales with Forecasts', x = 'Months after Jan 1992', y = 'Alcohol Sales (Millions of Dollars)')
+
+# plot end of ts w/ prediction intervals
+cut_df = tail(pred.df, 22)
+ggplot(cut_df) + 
+  geom_line(aes(x = t, y = pts, color = type)) + 
+  geom_ribbon(aes(x = t, y = pts, ymin = CI_low, ymax = CI_high), alpha=0.1) +
+  scale_color_manual(values=c("black", "red")) +
+  labs(title = 'Time Series of US Alcohol Sales with Forecasts', x = 'Months after Jan 1992', y = 'Alcohol Sales (Millions of Dollars)')
+
+# show table of intervals
+tail(pred.df, 10)
+```
+
+```{r}
+# extra stuff (original more complicated parametric model)
+n = length(data$S4248SM144NCEN)
+pgram = abs(fft((log_data)[2:n]))^2/n
+plot(pgram[1:n], type = "h")
+pgram 
+
+t = 1:n
+
+frequency = 12
+cosX = matrix(NA,ncol=frequency / 2,nrow=length(log_data))
+sinX = matrix(NA,ncol=frequency / 2 - 1,nrow=length(log_data))
+for(i in 1:(frequency/2)){
+cosX[,i] = cos(2*pi*t*i/frequency)
+if(i<(frequency / 2)){sinX[,i] = sin(2*pi*t*i/frequency)}
+}
+
+tt = t^2
+ttt = t^3
+tttt = t^4
+#lin.mod = lm(log_data ~ 1 + t + cosX + sinX)
+
+lin.mod = lm(log_data ~ t + tt + ttt + tttt + cosX + sinX +  factor( t %% 12 ) )
+
+plot.ts(t, log_data, type = 'l', main="Log of Alcohol Sales with Fitted Parametric Model", xlab = 'Months Since Jan 1992',ylab="Log(Alcohol Sales)")
+lines(t, lin.mod$fitted, col = '2')
+```
+
+```{r}
+# extra stuff 
+plot.ts(lin.mod$residual, ylab = "residual", main="Residuals of a seasonal parametric fit for the Log of Alochol Sales")
+```
+
+
+
+```{r}
+# extra stuff
+
+# finding arima for residuals
+resid = lin.mod2$residuals
+auto.arima(resid, method = 'ML')
+auto.arima(resid, method = 'CSS-ML')
+auto.arima(resid, method = 'CSS')
+auto.arima(resid, ic = 'aic')
+auto.arima(resid, ic = 'aicc')
+auto.arima(resid, ic = 'bic')
+sarima(resid, 1, 0, 5, no.constant = TRUE)
+sarima(resid, 2, 0, 3, no.constant = TRUE)
+sarima(resid, 3, 0, 2, no.constant = TRUE)
 
 ```
 
 ```{r}
-n = length(data$S4248SM144NCEN)
-final = sarima.for(diff12_data, n.ahead = 10, 6, 0, 0, 0, 1, 0, 3, no.constant=TRUE)
-final_pred = exp(final$pred + log_data[(n-9):n])
-x = 1:(n+10)
+# extra stuff
+acf2(resid)
 
-pred.df = data.frame(pts = c(data$S4248SM144NCEN, final_pred), t = x, type = c(rep('data', n), rep('forecast', 10)))
-ggplot(pred.df, aes(x = t, y = pts, color = type)) + geom_line() + scale_color_manual(values=c("black", "red"))
+corrs1 = ARMAacf(ar = 0.4326, ma = c(-0.6894, 0.2451, 0.4063, -0.3522, 0.3028), lag.max = 28)
+par.corrs1 = ARMAacf(ar = 0.4326, ma = c(-0.6894, 0.2451, 0.4063, -0.3522, 0.3028), lag.max = 28, pacf = TRUE)
 
-
+plot(x = 1:28, y = corrs1[2:29], type = "h", xlab = "Lag k", ylab = "Autocorrelation 1")
+abline(h = 0)
+plot(x = 1:28, y = par.corrs1, type = "h", xlab = "Lag k", ylab = "Partial Autocorrelation 1")
+abline(h = 0)
 ```
+
 
 ```{r}
 # extra stuff from testing things
